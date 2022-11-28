@@ -34,7 +34,15 @@ export function resampleNearest(valueArrays, inWidth, inHeight, outWidth, outHei
 
 // simple linear interpolation, code from:
 // https://en.wikipedia.org/wiki/Linear_interpolation#Programming_language_support
-function lerp(v0, v1, t) {
+function lerp(v0, v1, t, nodata = null) {
+  if (v0 === nodata && v1 === nodata) {
+    return nodata;
+  } else if (v0 === nodata || v1 === nodata) {
+    if (v0 === nodata) {
+      return v1;
+    }
+    return v0;
+  }
   return ((1 - t) * v0) + (t * v1);
 }
 
@@ -45,9 +53,10 @@ function lerp(v0, v1, t) {
  * @param {number} inHeight The height of the input rasters
  * @param {number} outWidth The desired width of the output rasters
  * @param {number} outHeight The desired height of the output rasters
+ * @param {number} nodata The nodata value
  * @returns {TypedArray[]} The resampled rasters
  */
-export function resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHeight) {
+export function resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHeight, nodata = null) {
   const relX = inWidth / outWidth;
   const relY = inHeight / outHeight;
 
@@ -72,9 +81,10 @@ export function resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHe
         const hh = array[(yh * inWidth) + xh];
 
         const value = lerp(
-          lerp(ll, hl, tx),
-          lerp(lh, hh, tx),
+          lerp(ll, hl, tx, nodata),
+          lerp(lh, hh, tx, nodata),
           rawY % 1,
+          nodata,
         );
         newArray[(y * outWidth) + x] = value;
       }
@@ -90,16 +100,17 @@ export function resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHe
  * @param {number} inHeight The height of the input rasters
  * @param {number} outWidth The desired width of the output rasters
  * @param {number} outHeight The desired height of the output rasters
+ * @param {number} nodata The nodata value
  * @param {string} [method = 'nearest'] The desired resampling method
  * @returns {TypedArray[]} The resampled rasters
  */
-export function resample(valueArrays, inWidth, inHeight, outWidth, outHeight, method = 'nearest') {
+export function resample(valueArrays, inWidth, inHeight, outWidth, outHeight, nodata, method = 'nearest') {
   switch (method.toLowerCase()) {
     case 'nearest':
       return resampleNearest(valueArrays, inWidth, inHeight, outWidth, outHeight);
     case 'bilinear':
     case 'linear':
-      return resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHeight);
+      return resampleBilinear(valueArrays, inWidth, inHeight, outWidth, outHeight, nodata);
     default:
       throw new Error(`Unsupported resampling method: '${method}'`);
   }
@@ -144,10 +155,11 @@ export function resampleNearestInterleaved(
  * @param {number} outHeight The desired height of the output rasters
  * @param {number} samples The number of samples per pixel for pixel
  *                         interleaved data
+ * @param {number} nodata The nodata value
  * @returns {TypedArray} The resampled raster
  */
 export function resampleBilinearInterleaved(
-  valueArray, inWidth, inHeight, outWidth, outHeight, samples) {
+  valueArray, inWidth, inHeight, outWidth, outHeight, samples, nodata = null) {
   const relX = inWidth / outWidth;
   const relY = inHeight / outHeight;
   const newArray = copyNewSize(valueArray, outWidth, outHeight, samples);
@@ -171,9 +183,10 @@ export function resampleBilinearInterleaved(
         const hh = valueArray[(yh * inWidth * samples) + (xh * samples) + i];
 
         const value = lerp(
-          lerp(ll, hl, tx),
-          lerp(lh, hh, tx),
+          lerp(ll, hl, tx, nodata),
+          lerp(lh, hh, tx), nodata,
           rawY % 1,
+          nodata,
         );
         newArray[(y * outWidth * samples) + (x * samples) + i] = value;
       }
@@ -191,10 +204,11 @@ export function resampleBilinearInterleaved(
  * @param {number} outHeight The desired height of the output rasters
  * @param {number} samples The number of samples per pixel for pixel
  *                                 interleaved data
+ * @param {number} nodata The nodata value
  * @param {string} [method = 'nearest'] The desired resampling method
  * @returns {TypedArray} The resampled rasters
  */
-export function resampleInterleaved(valueArray, inWidth, inHeight, outWidth, outHeight, samples, method = 'nearest') {
+export function resampleInterleaved(valueArray, inWidth, inHeight, outWidth, outHeight, samples, nodata, method = 'nearest') {
   switch (method.toLowerCase()) {
     case 'nearest':
       return resampleNearestInterleaved(
@@ -203,7 +217,7 @@ export function resampleInterleaved(valueArray, inWidth, inHeight, outWidth, out
     case 'bilinear':
     case 'linear':
       return resampleBilinearInterleaved(
-        valueArray, inWidth, inHeight, outWidth, outHeight, samples,
+        valueArray, inWidth, inHeight, outWidth, outHeight, samples, nodata,
       );
     default:
       throw new Error(`Unsupported resampling method: '${method}'`);
