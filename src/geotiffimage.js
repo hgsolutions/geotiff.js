@@ -526,6 +526,7 @@ class GeoTIFFImage {
           imageWindow[3] - imageWindow[1],
           width, height,
           samples.length,
+          this.getGDALNoData(),
           resampleMethod,
         );
       } else {
@@ -534,6 +535,7 @@ class GeoTIFFImage {
           imageWindow[2] - imageWindow[0],
           imageWindow[3] - imageWindow[1],
           width, height,
+          this.getGDALNoData(),
           resampleMethod,
         );
       }
